@@ -1,0 +1,8 @@
+.board {
+    margin: 0 auto;
+    width: 50vmin;
+    height: 50vmin;
+    display: grid;
+    grid-template: repeat(10, 1fr) / repeat(10, 1fr);
+    border: 2px solid black;
+}
