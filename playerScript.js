@@ -9,6 +9,31 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPlayerIndex = masterBoard.currentTurn;
     document.getElementById('currentPlayer').textContent = playerNames[currentPlayerIndex];
 
+    const pieces = {
+        "a": 3,
+        "b": 3,
+        "c": 3
+    };
+
+    let selectedPiece = null;
+
+    // Show pieces to player
+    function updatePieces() {
+        const piecesContainer = document.getElementById('piecesContainer');
+        piecesContainer.innerHTML = '<h3>Your Monsters:</h3>';
+        for (let type in pieces) {
+            for (let i = 0; i < pieces[type]; i++) {
+                const button = document.createElement('button');
+                button.textContent = type;
+                button.className = 'piece-button';
+                button.addEventListener('click', function() {
+                    selectedPiece = type; // After they click the piece button it gets selected
+                });
+                piecesContainer.appendChild(button);
+            }
+        }
+    }
+
     window.addEventListener('storage', function(event) {
         if (event.key === 'masterBoard') {
             const updatedMasterBoard = JSON.parse(event.newValue);
@@ -19,8 +44,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     createBoard(masterBoard.board);
+    updatePieces();
 
-    //create local Board and listen for changes
+    // Create local Board and listen for changes
     function createBoard(boardData) {
         const board = document.getElementById('board');
         board.innerHTML = ''; // Clear existing cells
@@ -31,10 +57,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (boardData[i][j]) {
                     cell.textContent = `${boardData[i][j].player}-${boardData[i][j].type}`;
                 }
+                // After player selects a piece, it clicks on the board and piece is placed on the board
                 cell.addEventListener('click', function() {
                     if (currentPlayerIndex === playerIndex) {
-                        if (!boardData[i][j]) {
-                            boardData[i][j] = { player: playerNames[playerIndex], type: 'Piece' }; // Example piece
+                        if (!boardData[i][j] && selectedPiece) {
+                            boardData[i][j] = { player: playerNames[playerIndex], type: selectedPiece }; // Example piece
+                            pieces[selectedPiece]--;
+                            selectedPiece = null;
+                            updatePieces();
                             updateMasterBoard(boardData);
                         }
                     }
@@ -44,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    //update
+    // Update
     function updateBoard(boardData) {
         const cells = document.querySelectorAll('.cell');
         cells.forEach((cell, index) => {
@@ -54,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    //updates master board in localStorage 
+    // Updates master board in localStorage 
     function updateMasterBoard(boardData) {
         const updatedMasterBoard = {
             board: boardData,
@@ -64,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('masterBoard', JSON.stringify(updatedMasterBoard));
     }
 
-    // checks if it is the current player's turn, increments the turn, and updates the master board.
+    // Checks if it is the current player's turn, increments the turn, and updates the master board.
     document.getElementById('endTurnButton').addEventListener('click', function() {
         if (currentPlayerIndex === playerIndex) {
             currentPlayerIndex = (currentPlayerIndex + 1) % 4;
