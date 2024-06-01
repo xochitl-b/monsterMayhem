@@ -10,12 +10,12 @@
     display: flex;
     margin: 20px;
 }
-.board {
-    width: 50vmin;
-    height: 50vmin;
+#board {
     display: grid;
-    grid-template: repeat(10, 1fr) / repeat(10, 1fr);
-    border: 2px solid black;
+    grid-template-columns: repeat(10, 1fr);
+    grid-gap: 1px;
+    width: 500px;
+    margin: 20px auto;
 }
 .cell {
     border: 1px solid gray;
@@ -36,6 +36,8 @@
     margin-top: 20px;
 }
 .piece-button {
-    display: block;
-    margin: 5px 0;
+    margin: 5px;
+    padding: 10px;
+    font-size: 16px;
+    cursor: pointer;
 }

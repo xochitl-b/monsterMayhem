@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const pieces = {
         "a": 3,
         "b": 3,
-        "c": 3
+        "c": 4
     };
 
     let selectedPiece = null;
@@ -70,7 +70,8 @@ document.addEventListener('DOMContentLoaded', function() {
         board.innerHTML = ''; // Clear existing cells
         for (let i = 0; i < 10; i++) {
             for (let j = 0; j < 10; j++) {
-                const cell = document.createElement('div');
+                //pieces are going to work as buttons.
+                const cell = document.createElement('button'); 
                 cell.className = 'cell';
                 if (boardData[i][j]) {
                     cell.textContent = `${boardData[i][j].player}-${boardData[i][j].type}`;
@@ -117,12 +118,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Updates master board in localStorage 
     function updateMasterBoard(boardData) {
-        const updatedMasterBoard = {
-            board: boardData,
-            currentTurn: currentPlayerIndex,
-            playerNames: playerNames
-        };
-        localStorage.setItem('masterBoard', JSON.stringify(updatedMasterBoard));
+        masterBoard.board = boardData;
+        localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
     }
 
     // Updates the current player turn indicator
