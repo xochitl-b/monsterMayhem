@@ -24,5 +24,9 @@ document.getElementById('playerForm').addEventListener('submit', function(event)
         const playerWindow = window.open('player.html?index=' + i, '_blank', 'width=600,height=600');
     }
 
+    restartButton.addEventListener('click', function() {
+        localStorage.removeItem('masterBoard');
+        location.reload();
+    })
 
 });

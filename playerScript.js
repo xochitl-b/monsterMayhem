@@ -2,7 +2,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const playerIndex = parseInt(urlParams.get('index'), 10);
 
-    const masterBoard = JSON.parse(localStorage.getItem('masterBoard'));
+    let masterBoard = JSON.parse(localStorage.getItem('masterBoard')) || {
+        board: Array.from({ length: 10 }, () => Array(10).fill(null)),
+        currentTurn: 0,
+        playerNames: ["Player 1", "Player 2", "Player 3", "Player 4"]
+    };
+    
     const playerNames = masterBoard.playerNames;
     document.getElementById('playerName').textContent = playerNames[playerIndex];
 
@@ -16,6 +21,19 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     let selectedPiece = null;
+    let selectedCell = null;
+
+    // Player edge mapping
+    const playerEdges = [
+        (i, j) => i === 0,      // Player 1: Top
+        (i, j) => i === 9,      // Player 2: Bottom
+        (i, j) => j === 0,      // Player 3: Left
+        (i, j) => j === 9       // Player 4: Right
+    ];
+
+    function isValidPlacement(i, j) {
+        return playerEdges[playerIndex](i, j);
+    }
 
     // Show pieces to player
     function updatePieces() {
@@ -39,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const updatedMasterBoard = JSON.parse(event.newValue);
             updateBoard(updatedMasterBoard.board);
             currentPlayerIndex = updatedMasterBoard.currentTurn;
-            document.getElementById('currentPlayer').textContent = playerNames[currentPlayerIndex];
+            updateCurrentPlayerIndicator();
         }
     });
 
@@ -60,12 +78,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 // After player selects a piece, it clicks on the board and piece is placed on the board
                 cell.addEventListener('click', function() {
                     if (currentPlayerIndex === playerIndex) {
-                        if (!boardData[i][j] && selectedPiece) {
-                            boardData[i][j] = { player: playerNames[playerIndex], type: selectedPiece }; // Example piece
+                        if (selectedPiece && !boardData[i][j] && isValidPlacement(i, j)) {
+                            boardData[i][j] = { player: playerNames[playerIndex], type: selectedPiece };
                             pieces[selectedPiece]--;
                             selectedPiece = null;
                             updatePieces();
                             updateMasterBoard(boardData);
+                            updateBoard(boardData); // Update the local board immediately
+                        } else if (!selectedPiece && boardData[i][j] && boardData[i][j].player === playerNames[playerIndex]) {
+                            selectedCell = { i, j, type: boardData[i][j].type };
+                        } else if (selectedCell) {
+                            const dx = Math.abs(selectedCell.i - i);
+                            const dy = Math.abs(selectedCell.j - j);
+                            if ((dx === 0 || dy === 0) || (dx === 2 && dy === 2)) {
+                                boardData[selectedCell.i][selectedCell.j] = null;
+                                boardData[i][j] = { player: playerNames[playerIndex], type: selectedCell.type };
+                                selectedCell = null;
+                                updateMasterBoard(boardData);
+                                updateBoard(boardData);
+                            }
                         }
                     }
                 });
@@ -74,7 +105,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Update
+    // Update the board UI
     function updateBoard(boardData) {
         const cells = document.querySelectorAll('.cell');
         cells.forEach((cell, index) => {
@@ -94,13 +125,18 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('masterBoard', JSON.stringify(updatedMasterBoard));
     }
 
+    // Updates the current player turn indicator
+    function updateCurrentPlayerIndicator() {
+        document.getElementById('currentPlayer').textContent = playerNames[currentPlayerIndex];
+    }
+
     // Checks if it is the current player's turn, increments the turn, and updates the master board.
     document.getElementById('endTurnButton').addEventListener('click', function() {
         if (currentPlayerIndex === playerIndex) {
             currentPlayerIndex = (currentPlayerIndex + 1) % 4;
-            const masterBoard = JSON.parse(localStorage.getItem('masterBoard'));
             masterBoard.currentTurn = currentPlayerIndex;
             localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
+            updateCurrentPlayerIndicator(); // Update the local turn indicator immediately
         }
     });
 });
