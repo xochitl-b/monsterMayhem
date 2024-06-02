@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const playerIndex = parseInt(urlParams.get('index'), 10);
 
     let masterBoard;
-    const pieces = { "a": 3, "b": 3, "c": 4 };
+    const pieces = { "🧛": 3, "🐺": 3, "👻": 4 }; // Updated pieces
     let selectedPiece = null;
     let selectedCell = null;
 
@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('player4').value
             ];
 
+            //Json package that keeps the general information.
             masterBoard = {
                 board: Array.from({ length: 10 }, () => Array(10).fill(null)),
                 currentTurn: 0,
@@ -51,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function setupPlayerPage(playerIndex) {
         masterBoard = JSON.parse(localStorage.getItem('masterBoard'));
         if (!masterBoard) {
-            alert("No game data found. Please start a new game.");
+            alert("Please start a new game.");
             window.close();
             return;
         }
@@ -118,13 +119,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     cell.addEventListener('click', function() {
                         if (masterBoard.currentTurn === playerIndex) {
                             if (selectedPiece && !boardData[i][j] && isValidPlacement(i, j)) {
-                                boardData[i][j] = { player: playerNames[playerIndex], type: selectedPiece };
+                                // Place the piece and mark it as first placement
+                                boardData[i][j] = { player: playerNames[playerIndex], type: selectedPiece, firstPlacement: true };
                                 pieces[selectedPiece]--;
                                 selectedPiece = null;
                                 updatePieces();
                                 updateMasterBoard(boardData);
                             } else if (!selectedPiece && boardData[i][j] && boardData[i][j].player === playerNames[playerIndex]) {
-                                selectedCell = { i, j, type: boardData[i][j].type };
+                                if (!boardData[i][j].firstPlacement) {
+                                    selectedCell = { i, j, type: boardData[i][j].type };
+                                }
                             } else if (selectedCell) {
                                 const dx = Math.abs(selectedCell.i - i);
                                 const dy = Math.abs(selectedCell.j - j);
@@ -147,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         }
-
+        
         function canMoveOver(targetCell) {
             return targetCell.player === playerNames[playerIndex];
         }
@@ -157,10 +161,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetPiece = targetCell.type;
             const targetPlayerIndex = playerNames.indexOf(masterBoard.board[targetCell.i][targetCell.j].player);
 
-            if ((sourcePiece === "a" && targetPiece === "b") ||
-                (sourcePiece === "b" && targetPiece === "c") ||
-                (sourcePiece === "c" && targetPiece === "a")) {
-                masterBoard.board[targetCell.i][targetCell.j] = { player: playerNames[playerIndex], type: sourcePiece };
+            if ((sourcePiece === "🧛" && targetPiece === "🐺") ||
+                (sourcePiece === "🐺" && targetPiece === "👻") ||
+                (sourcePiece === "👻" && targetPiece === "🧛")) {
+                masterBoard.board[targetCell.i][targetCell.j] = { player: playerNames[playerIndex], type: sourcePiece, firstPlacement: false };
                 masterBoard.board[sourceCell.i][sourceCell.j] = null;
                 masterBoard.eliminatedPieces[targetPlayerIndex]++;
             } else {
@@ -231,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function checkForElimination() {
             const activePlayers = masterBoard.playerNames.map((_, index) => {
                 const onBoardCount = countPlayerPieces(index);
-                const remainingPiecesCount = pieces["a"] + pieces["b"] + pieces["c"];
+                const remainingPiecesCount = pieces["🧛"] + pieces["🐺"] + pieces["👻"];
                 return onBoardCount > 0 || remainingPiecesCount > 0;
             });
             masterBoard.activePlayers = activePlayers;
@@ -253,6 +257,14 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('endTurnButton').addEventListener('click', function() {
             if (masterBoard.currentTurn === playerIndex) {
                 masterBoard.currentTurn = determineNextPlayer();
+                // Mark all pieces placed in this turn as no longer first placement
+                masterBoard.board.forEach(row => {
+                    row.forEach(cell => {
+                        if (cell && cell.player === playerNames[playerIndex] && cell.firstPlacement) {
+                            cell.firstPlacement = false;
+                        }
+                    });
+                });
                 localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
                 document.getElementById('currentPlayer').textContent = playerNames[masterBoard.currentTurn];
                 checkForElimination();
