@@ -3,8 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
     const playerIndex = parseInt(urlParams.get('index'), 10);
 
-    let masterBoard;
-    const pieces = { "🧛": 3, "🐺": 3, "👻": 4 }; // Updated pieces
+    const pieces = { "🧛": 3, "🐺": 3, "👻": 4 };
     let selectedPiece = null;
     let selectedCell = null;
 
@@ -26,8 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('player4').value
             ];
 
-            //Json package that keeps the general information.
-            masterBoard = {
+            // Json package that keeps the general information.
+            const masterBoard = {
                 board: Array.from({ length: 10 }, () => Array(10).fill(null)),
                 currentTurn: 0,
                 playerNames: playerNames,
@@ -50,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setupPlayerPage(playerIndex) {
-        masterBoard = JSON.parse(localStorage.getItem('masterBoard'));
+        let masterBoard = JSON.parse(localStorage.getItem('masterBoard'));
         if (!masterBoard) {
             alert("Please start a new game.");
             window.close();
@@ -117,41 +116,57 @@ document.addEventListener('DOMContentLoaded', function() {
                         cell.textContent = `${boardData[i][j].player}-${boardData[i][j].type}`;
                     }
                     cell.addEventListener('click', function() {
-                        if (masterBoard.currentTurn === playerIndex) {
-                            if (selectedPiece && !boardData[i][j] && isValidPlacement(i, j)) {
-                                // Place the piece and mark it as first placement
-                                boardData[i][j] = { player: playerNames[playerIndex], type: selectedPiece, firstPlacement: true };
-                                pieces[selectedPiece]--;
-                                selectedPiece = null;
-                                updatePieces();
-                                updateMasterBoard(boardData);
-                            } else if (!selectedPiece && boardData[i][j] && boardData[i][j].player === playerNames[playerIndex]) {
-                                if (!boardData[i][j].firstPlacement) {
-                                    selectedCell = { i, j, type: boardData[i][j].type };
-                                }
-                            } else if (selectedCell) {
-                                const dx = Math.abs(selectedCell.i - i);
-                                const dy = Math.abs(selectedCell.j - j);
-                                if ((dx === 0 || dy === 0) || (dx === 2 && dy === 2)) {
-                                    if (!boardData[i][j] || canMoveOver(boardData[i][j])) {
-                                        if (boardData[i][j]) {
-                                            resolveConflict(selectedCell, { i, j, type: boardData[i][j].type });
-                                        } else {
-                                            boardData[selectedCell.i][selectedCell.j] = null;
-                                            boardData[i][j] = { player: playerNames[playerIndex], type: selectedCell.type };
-                                        }
-                                        selectedCell = null;
-                                        updateMasterBoard(boardData);
-                                    }
-                                }
-                            }
-                        }
+                        handleCellClick(i, j);
                     });
                     board.appendChild(cell);
                 }
             }
         }
-        
+
+        function handleCellClick(i, j) {
+            if (masterBoard.currentTurn === playerIndex) {
+                if (selectedPiece && !masterBoard.board[i][j] && isValidPlacement(i, j)) {
+                    placePiece(i, j);
+                } else if (!selectedPiece && masterBoard.board[i][j] && masterBoard.board[i][j].player === playerNames[playerIndex]) {
+                    selectPiece(i, j);
+                } else if (selectedCell) {
+                    movePiece(i, j);
+                }
+            }
+        }
+
+        function placePiece(i, j) {
+            // Place the piece and mark it as first placement
+            masterBoard.board[i][j] = { player: playerNames[playerIndex], type: selectedPiece, firstPlacement: true };
+            pieces[selectedPiece]--;
+            selectedPiece = null;
+            updatePieces();
+            updateMasterBoard();
+        }
+
+        function selectPiece(i, j) {
+            if (!masterBoard.board[i][j].firstPlacement) {
+                selectedCell = { i, j, type: masterBoard.board[i][j].type };
+            }
+        }
+
+        function movePiece(i, j) {
+            const dx = Math.abs(selectedCell.i - i);
+            const dy = Math.abs(selectedCell.j - j);
+            if ((dx === 0 || dy === 0) || (dx === 2 && dy === 2)) {
+                if (!masterBoard.board[i][j] || canMoveOver(masterBoard.board[i][j])) {
+                    if (masterBoard.board[i][j]) {
+                        resolveConflict(selectedCell, { i, j, type: masterBoard.board[i][j].type });
+                    } else {
+                        masterBoard.board[selectedCell.i][selectedCell.j] = null;
+                        masterBoard.board[i][j] = { player: playerNames[playerIndex], type: selectedCell.type };
+                    }
+                    selectedCell = null;
+                    updateMasterBoard();
+                }
+            }
+        }
+
         function canMoveOver(targetCell) {
             return targetCell.player === playerNames[playerIndex];
         }
@@ -173,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             updateEliminatedPieces();
-            updateMasterBoard(masterBoard.board);
+            updateMasterBoard();
             checkForElimination();
         }
 
@@ -186,10 +201,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        function updateMasterBoard(boardData) {
-            masterBoard.board = boardData;
+        function updateMasterBoard() {
             localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
-            updateBoard(boardData);
+            updateBoard(masterBoard.board);
         }
 
         function updateEliminatedPieces() {
@@ -223,9 +237,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         //choose next player based on who has the least amount of pieces
         function determineNextPlayer() {
+            const activePlayers = masterBoard.activePlayers;
             const pieceCounts = masterBoard.playerNames.map((_, index) => countPlayerPieces(index));
-            const minPieces = Math.min(...pieceCounts);
-            const candidates = pieceCounts.map((count, index) => count === minPieces ? index : null).filter(index => index !== null);
+            const minPieces = Math.min(...pieceCounts.filter((_, index) => activePlayers[index])); // Only consider active players
+            const candidates = pieceCounts.map((count, index) => activePlayers[index] && count === minPieces ? index : null).filter(index => index !== null);
 
             return candidates[Math.floor(Math.random() * candidates.length)];
         }
@@ -260,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Mark all pieces placed in this turn as no longer first placement
                 masterBoard.board.forEach(row => {
                     row.forEach(cell => {
-                        if (cell && cell.player === playerNames[playerIndex] && cell.firstPlacement) {
+                        if (cell && cell.player === masterBoard.playerNames[playerIndex] && cell.firstPlacement) {
                             cell.firstPlacement = false;
                         }
                     });
