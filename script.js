@@ -1,25 +1,37 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize variables
     const urlParams = new URLSearchParams(window.location.search);
     const playerIndex = parseInt(urlParams.get('index'), 10);
 
-    let masterBoard = JSON.parse(localStorage.getItem('masterBoard')) || {
-        board: Array.from({ length: 10 }, () => Array(10).fill(null)),
-        currentTurn: 0,
-        playerNames: [],
-        eliminatedPieces: [0, 0, 0, 0] // Track eliminated pieces for each player
-    };
+    let masterBoard;
+    const pieces = { "a": 3, "b": 3, "c": 4 };
+    let selectedPiece = null;
+    let selectedCell = null;
 
     if (isNaN(playerIndex)) {
-        // This is the initial setup page
+        // Initial setup page
+        setupInitialPage();
+    } else {
+        // Player page
+        setupPlayerPage(playerIndex);
+    }
+
+    function setupInitialPage() {
         document.getElementById('playerForm').addEventListener('submit', function(event) {
             event.preventDefault();
-            const player1 = document.getElementById('player1').value;
-            const player2 = document.getElementById('player2').value;
-            const player3 = document.getElementById('player3').value;
-            const player4 = document.getElementById('player4').value;
+            const playerNames = [
+                document.getElementById('player1').value,
+                document.getElementById('player2').value,
+                document.getElementById('player3').value,
+                document.getElementById('player4').value
+            ];
 
-            const playerNames = [player1, player2, player3, player4];
-            masterBoard.playerNames = playerNames;
+            masterBoard = {
+                board: Array.from({ length: 10 }, () => Array(10).fill(null)),
+                currentTurn: 0,
+                playerNames: playerNames,
+                eliminatedPieces: [0, 0, 0, 0]
+            };
             localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
 
             // Open new windows for each player
@@ -32,29 +44,25 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.removeItem('masterBoard');
             location.reload();
         });
+    }
 
-    } else {
-        // This is the player page
+    function setupPlayerPage(playerIndex) {
+        masterBoard = JSON.parse(localStorage.getItem('masterBoard'));
+        if (!masterBoard) {
+            alert("No game data found. Please start a new game.");
+            window.close();
+            return;
+        }
+
         const playerNames = masterBoard.playerNames;
         document.getElementById('playerName').textContent = playerNames[playerIndex];
-
-        let currentPlayerIndex = masterBoard.currentTurn;
-        document.getElementById('currentPlayer').textContent = playerNames[currentPlayerIndex];
-
-        const pieces = {
-            "a": 3,
-            "b": 3,
-            "c": 4 // Updated to 4 pieces of "c"
-        };
-
-        let selectedPiece = null;
-        let selectedCell = null;
+        document.getElementById('currentPlayer').textContent = playerNames[masterBoard.currentTurn];
 
         const playerEdges = [
-            (i, j) => i === 0,      // Player 1: Top
-            (i, j) => i === 9,      // Player 2: Bottom
-            (i, j) => j === 0,      // Player 3: Left
-            (i, j) => j === 9       // Player 4: Right
+            (i, j) => i === 0,
+            (i, j) => i === 9,
+            (i, j) => j === 0,
+            (i, j) => j === 9
         ];
 
         function isValidPlacement(i, j) {
@@ -80,37 +88,35 @@ document.addEventListener('DOMContentLoaded', function() {
         window.addEventListener('storage', function(event) {
             if (event.key === 'masterBoard') {
                 const updatedMasterBoard = JSON.parse(event.newValue);
-                masterBoard = updatedMasterBoard; // Update the local masterBoard variable
+                masterBoard = updatedMasterBoard;
                 updateBoard(updatedMasterBoard.board);
-                currentPlayerIndex = updatedMasterBoard.currentTurn;
-                updateCurrentPlayerIndicator();
-                updateEliminatedPieces(); // Update the eliminated pieces count
+                document.getElementById('currentPlayer').textContent = playerNames[masterBoard.currentTurn];
+                updateEliminatedPieces();
             }
         });
 
         createBoard(masterBoard.board);
         updatePieces();
-        updateEliminatedPieces(); // Initialize eliminated pieces count
+        updateEliminatedPieces();
 
         function createBoard(boardData) {
             const board = document.getElementById('board');
-            board.innerHTML = ''; // Clear existing cells
+            board.innerHTML = '';
             for (let i = 0; i < 10; i++) {
                 for (let j = 0; j < 10; j++) {
-                    const cell = document.createElement('button'); // Changed to button
+                    const cell = document.createElement('button');
                     cell.className = 'cell';
                     if (boardData[i][j]) {
                         cell.textContent = `${boardData[i][j].player}-${boardData[i][j].type}`;
                     }
                     cell.addEventListener('click', function() {
-                        if (currentPlayerIndex === playerIndex) {
+                        if (masterBoard.currentTurn === playerIndex) {
                             if (selectedPiece && !boardData[i][j] && isValidPlacement(i, j)) {
                                 boardData[i][j] = { player: playerNames[playerIndex], type: selectedPiece };
                                 pieces[selectedPiece]--;
                                 selectedPiece = null;
                                 updatePieces();
                                 updateMasterBoard(boardData);
-                                updateBoard(boardData); // Update the local board immediately
                             } else if (!selectedPiece && boardData[i][j] && boardData[i][j].player === playerNames[playerIndex]) {
                                 selectedCell = { i, j, type: boardData[i][j].type };
                             } else if (selectedCell) {
@@ -126,7 +132,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                         }
                                         selectedCell = null;
                                         updateMasterBoard(boardData);
-                                        updateBoard(boardData);
                                     }
                                 }
                             }
@@ -159,7 +164,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
             updateEliminatedPieces();
             updateMasterBoard(masterBoard.board);
-            updateBoard(masterBoard.board);
         }
 
         function updateBoard(boardData) {
@@ -174,10 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
         function updateMasterBoard(boardData) {
             masterBoard.board = boardData;
             localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
-        }
-
-        function updateCurrentPlayerIndicator() {
-            document.getElementById('currentPlayer').textContent = playerNames[currentPlayerIndex];
+            updateBoard(boardData);
         }
 
         function updateEliminatedPieces() {
@@ -188,12 +189,31 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        function determineNextPlayer() {
+            const pieceCounts = masterBoard.playerNames.map((_, index) => countPlayerPieces(index));
+            const minPieces = Math.min(...pieceCounts);
+            const candidates = pieceCounts.map((count, index) => count === minPieces ? index : null).filter(index => index !== null);
+
+            return candidates[Math.floor(Math.random() * candidates.length)];
+        }
+
+        function countPlayerPieces(playerIndex) {
+            let count = 0;
+            for (let row of masterBoard.board) {
+                for (let cell of row) {
+                    if (cell && cell.player === masterBoard.playerNames[playerIndex]) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        }
+
         document.getElementById('endTurnButton').addEventListener('click', function() {
-            if (currentPlayerIndex === playerIndex) {
-                currentPlayerIndex = (currentPlayerIndex + 1) % 4;
-                masterBoard.currentTurn = currentPlayerIndex;
+            if (masterBoard.currentTurn === playerIndex) {
+                masterBoard.currentTurn = determineNextPlayer();
                 localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
-                updateCurrentPlayerIndicator(); // Update the local turn indicator immediately
+                document.getElementById('currentPlayer').textContent = playerNames[masterBoard.currentTurn];
             }
         });
     }
