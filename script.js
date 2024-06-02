@@ -30,7 +30,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 board: Array.from({ length: 10 }, () => Array(10).fill(null)),
                 currentTurn: 0,
                 playerNames: playerNames,
-                eliminatedPieces: [0, 0, 0, 0]
+                eliminatedPieces: [0, 0, 0, 0],
+                activePlayers: [true, true, true, true], // Track active players
+                wins: [0, 0, 0, 0] // Track wins for each player
             };
             localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
 
@@ -92,12 +94,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateBoard(updatedMasterBoard.board);
                 document.getElementById('currentPlayer').textContent = playerNames[masterBoard.currentTurn];
                 updateEliminatedPieces();
+                updateWinsDisplay(); // Update wins display
+                checkForElimination();
             }
         });
 
         createBoard(masterBoard.board);
         updatePieces();
         updateEliminatedPieces();
+        updateWinsDisplay();
+        checkForElimination();
 
         function createBoard(boardData) {
             const board = document.getElementById('board');
@@ -164,6 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             updateEliminatedPieces();
             updateMasterBoard(masterBoard.board);
+            checkForElimination();
         }
 
         function updateBoard(boardData) {
@@ -189,14 +196,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        function determineNextPlayer() {
-            const pieceCounts = masterBoard.playerNames.map((_, index) => countPlayerPieces(index));
-            const minPieces = Math.min(...pieceCounts);
-            const candidates = pieceCounts.map((count, index) => count === minPieces ? index : null).filter(index => index !== null);
-
-            return candidates[Math.floor(Math.random() * candidates.length)];
+        function updateWinsDisplay() {
+            if (Array.isArray(masterBoard.wins) && typeof playerIndex === 'number' && playerIndex >= 0 && playerIndex < masterBoard.wins.length) {
+                document.getElementById('winCount').textContent = `Wins: ${masterBoard.wins[playerIndex]}`;
+            } else {
+                console.error('Invalid wins data or playerIndex:', masterBoard.wins, playerIndex);
+            }
         }
 
+        //count players pieces
         function countPlayerPieces(playerIndex) {
             let count = 0;
             for (let row of masterBoard.board) {
@@ -207,6 +215,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             return count;
+        }        
+        
+        //choose next player based on who has the least amount of pieces
+        function determineNextPlayer() {
+            const pieceCounts = masterBoard.playerNames.map((_, index) => countPlayerPieces(index));
+            const minPieces = Math.min(...pieceCounts);
+            const candidates = pieceCounts.map((count, index) => count === minPieces ? index : null).filter(index => index !== null);
+
+            return candidates[Math.floor(Math.random() * candidates.length)];
+        }
+
+
+        //checks if a player has no pieces on the board an no pieces to be selected
+        function checkForElimination() {
+            const activePlayers = masterBoard.playerNames.map((_, index) => {
+                const onBoardCount = countPlayerPieces(index);
+                const remainingPiecesCount = pieces["a"] + pieces["b"] + pieces["c"];
+                return onBoardCount > 0 || remainingPiecesCount > 0;
+            });
+            masterBoard.activePlayers = activePlayers;
+
+            const activeCount = activePlayers.filter(active => active).length;
+
+            if (!activePlayers[playerIndex] && activeCount > 0) {
+                alert('You are out of monsters :(');
+            } else if (activeCount === 1) {
+                const winnerIndex = activePlayers.findIndex(active => active);
+                if (winnerIndex === playerIndex) {
+                    alert('You have won!');
+                    masterBoard.wins[winnerIndex]++;
+                    localStorage.setItem('masterBoard', JSON.stringify(masterBoard)); // Update wins count
+                }
+            }
         }
 
         document.getElementById('endTurnButton').addEventListener('click', function() {
@@ -214,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 masterBoard.currentTurn = determineNextPlayer();
                 localStorage.setItem('masterBoard', JSON.stringify(masterBoard));
                 document.getElementById('currentPlayer').textContent = playerNames[masterBoard.currentTurn];
+                checkForElimination();
             }
         });
     }
